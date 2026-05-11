@@ -1,0 +1,1303 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JS FACTORY — Sistema de Producción</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- Librería para generar PDF robustos -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<style>
+:root{
+  --navy:#001428;
+  --navy2:#002050;
+  --gold:#d4a017;
+  --gold2:#f0c030;
+  --danger:#e53e3e;
+  --success:#22c55e;
+  --warn:#f59e0b;
+  --info:#3b82f6;
+  --bg:#f8fafc;
+  --card:#fff;
+  --text:#1e293b;
+  --muted:#64748b;
+  --border:#e2e8f0;
+  --radius:10px;
+  --shadow:0 4px 20px rgba(0,0,0,0.05);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);padding-top:62px;font-size:14px}
+h1,h2,h3,h4,h5,h6,.bc{font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.5px}
+
+/* ---- TOPBAR ---- */
+#topbar{position:fixed;top:0;left:0;right:0;height:62px;background:var(--navy);display:flex;align-items:center;justify-content:space-between;padding:0 18px;z-index:9999;box-shadow:0 2px 10px rgba(0,0,0,.3)}
+#topbar .logo{display:flex;align-items:center;gap:10px}
+#topbar .logo img{height:40px;object-fit:contain}
+#topbar .logo-txt{font-family:'Barlow Condensed',sans-serif;font-size:1.6rem;font-weight:900;color:var(--card);text-transform:uppercase;letter-spacing:1px}
+#topbar .logo-txt span{color:var(--gold)}
+.role-bar{display:flex;align-items:center;gap:10px}
+.role-bar label{color:var(--gold);font-size:.75rem;font-weight:700;text-transform:uppercase}
+#roleSwitcher{background:rgba(255,255,255,.1);color:#fff;border:1px solid var(--gold);padding:6px 12px;border-radius:6px;font-family:'Barlow Condensed',sans-serif;font-size:1rem;font-weight:700;cursor:pointer;outline:none}
+#roleSwitcher option{background:var(--navy);color:#fff}
+
+/* ---- SIDEBAR ---- */
+#sidebar{position:fixed;top:62px;left:0;bottom:0;width:220px;background:var(--navy2);z-index:800;overflow-y:auto;transition:.3s;display:flex;flex-direction:column;gap:4px;padding:12px 0}
+.sb-section{padding:6px 14px;color:rgba(255,255,255,.4);font-size:.65rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-top:8px}
+.sb-item{display:flex;align-items:center;gap:10px;padding:10px 18px;cursor:pointer;color:rgba(255,255,255,.7);font-size:.9rem;font-weight:500;border-left:3px solid transparent;transition:.2s}
+.sb-item i{width:18px;text-align:center;font-size:1rem}
+.sb-item:hover{color:#fff;background:rgba(255,255,255,.05)}
+.sb-item.active{color:var(--gold);border-left-color:var(--gold);background:rgba(212,160,23,.1)}
+
+/* ---- MAIN & GRID ---- */
+#main{margin-left:220px;padding:24px;min-height:calc(100vh - 62px)}
+.page{display:none;animation:fadeUp .3s ease}
+.page.active{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.page-title{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+.page-title h2{font-size:1.8rem;color:var(--navy);font-weight:900}
+.icon-badge{width:40px;height:40px;background:var(--navy);display:flex;align-items:center;justify-content:center;border-radius:8px;color:var(--gold);font-size:1.1rem}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+
+/* ---- CARDS & KPI ---- */
+.card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);border:1px solid var(--border);overflow:hidden}
+.card-head{background:var(--navy);color:#fff;padding:12px 16px;font-family:'Barlow Condensed',sans-serif;font-size:1.1rem;font-weight:700;border-bottom:2px solid var(--gold);display:flex;align-items:center;justify-content:space-between}
+.card-body{padding:16px}
+.kpi{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 20px;display:flex;flex-direction:column;gap:4px;border-top:4px solid var(--navy);cursor:pointer;transition:.2s}
+.kpi:hover{transform:translateY(-3px)}
+.kpi-label{font-size:.72rem;font-weight:700;text-transform:uppercase;color:var(--muted)}
+.kpi-val{font-family:'Barlow Condensed',sans-serif;font-size:2.2rem;font-weight:900;line-height:1;color:var(--navy)}
+.kpi.gold{border-top-color:var(--gold)}
+.kpi.green{border-top-color:var(--success)}
+.kpi.red{border-top-color:var(--danger)}
+
+/* ---- BUTTONS & FORMS ---- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 14px;border-radius:6px;font-family:'Barlow',sans-serif;font-size:.85rem;font-weight:600;cursor:pointer;border:none;transition:.2s;text-transform:uppercase;letter-spacing:.5px}
+.btn:disabled{opacity:0.5;cursor:not-allowed}
+.btn-gold{background:var(--gold);color:var(--navy)}
+.btn-gold:hover{background:var(--gold2)}
+.btn-navy{background:var(--navy);color:#fff}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-success{background:var(--success);color:#fff}
+.btn-ghost{background:transparent;color:var(--navy);border:1.5px solid var(--border)}
+.btn-sm{padding:5px 10px;font-size:.75rem}
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:.75rem;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.form-ctrl{width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:6px;font-family:'Barlow',sans-serif;font-size:.9rem;outline:none;transition:.2s}
+.form-ctrl:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(212,160,23,.1)}
+textarea.form-ctrl{resize:vertical;min-height:80px}
+.file-upload{border:2px dashed var(--border);padding:16px;text-align:center;border-radius:8px;cursor:pointer;background:#f8fafc}
+.file-upload:hover{background:#f1f5f9;border-color:var(--gold)}
+.img-preview{max-width:100%;max-height:150px;border-radius:6px;margin-top:10px;display:none}
+
+/* ---- TABLES ---- */
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.85rem}
+thead th{background:var(--navy);color:#fff;padding:10px 14px;text-align:left;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:.5px}
+tbody tr{border-bottom:1px solid var(--border)}
+tbody tr:hover{background:#f1f5f9}
+tbody td{padding:10px 14px;vertical-align:middle}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;font-size:.7rem;font-weight:700;text-transform:uppercase}
+.bg-gold{background:rgba(212,160,23,.15);color:#9a6f00}
+.bg-green{background:rgba(34,197,94,.15);color:#15803d}
+.bg-red{background:rgba(229,62,62,.15);color:#b91c1c}
+.bg-blue{background:rgba(59,130,246,.15);color:#1d4ed8}
+.bg-info{background:rgba(59,130,246,.1);color:#2563eb;border:1px solid var(--info)}
+.bg-navy{background:var(--navy);color:#fff}
+
+/* ---- MODALS ---- */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,20,.7);z-index:5000;display:none;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(3px)}
+.modal-bg.open{display:flex}
+.modal-box{background:#fff;border-radius:12px;width:100%;max-width:980px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 24px 64px rgba(0,0,0,.3)}
+.modal-head{background:var(--navy);color:#fff;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;border-radius:12px 12px 0 0;border-bottom:3px solid var(--gold)}
+.modal-body{padding:20px;overflow-y:auto;flex:1}
+.modal-foot{padding:14px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;background:#f8fafc;border-radius:0 0 12px 12px}
+
+/* ---- PRODUCTION CHECKLIST & PARTS (ACCORDION OPTIMIZED) ---- */
+.prod-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+.prod-card{background:var(--card);border-radius:var(--radius);padding:16px;border-left:5px solid var(--gold);box-shadow:var(--shadow);cursor:pointer;transition:.2s}
+.prod-card:hover{transform:translateY(-3px)}
+
+details.part-box{border:1px solid var(--border);border-radius:8px;margin-bottom:10px;background:#fff;overflow:hidden;transition:all .3s ease;}
+details.part-box summary{padding:12px 14px;cursor:pointer;list-style:none;font-weight:700;color:var(--navy);outline:none;background:#f8fafc;}
+details.part-box summary::-webkit-details-marker{display:none;}
+details.part-box[open] summary{border-bottom:1px solid var(--border);background:#fff;}
+.part-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;padding:12px;}
+
+.part-btn{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px;border:2px solid var(--border);border-radius:8px;background:#f8fafc;cursor:pointer;user-select:none;transition:.2s}
+.part-btn.active{border-color:var(--gold);background:rgba(212,160,23,.1);color:var(--navy)}
+.part-btn.done{border-color:var(--success);background:rgba(34,197,94,.1);color:var(--success);cursor:not-allowed}
+.part-btn.error{border-color:var(--danger);background:rgba(229,62,62,.1);color:var(--danger)}
+.part-btn i{font-size:1.4rem}
+.part-btn span{font-size:.7rem;font-weight:700;text-align:center}
+
+/* ---- CHAT & ALERTS ---- */
+.chat-box{background:#f1f5f9;border-radius:8px;padding:12px;max-height:200px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;border:1px solid var(--border)}
+.msg{padding:8px 12px;border-radius:8px;font-size:.85rem;background:#fff;border-left:3px solid var(--navy)}
+.msg.error-log{border-left-color:var(--danger);background:rgba(229,62,62,.05)}
+.msg.success-log{border-left-color:var(--success);background:rgba(34,197,94,.05)}
+.msg-meta{font-size:.7rem;color:var(--muted);margin-bottom:4px;font-weight:700}
+
+/* ---- KANBAN CALANDRADO ---- */
+.kanban-board{display:flex;gap:16px;overflow-x:auto;padding-bottom:10px}
+.kanban-col{min-width:300px;background:#f1f5f9;border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:10px}
+.kanban-head{font-family:'Barlow Condensed';font-size:1.2rem;font-weight:700;color:var(--navy);border-bottom:2px solid var(--gold);padding-bottom:6px}
+
+/* ---- GANTT & TIMELINE ---- */
+.gantt-container {border-left: 3px solid var(--gold); padding-left: 15px; margin-left: 10px; display: flex; flex-direction: column; gap: 15px;}
+.gantt-step {position: relative;}
+.gantt-step::before {content: ''; position: absolute; left: -24px; top: 2px; width: 14px; height: 14px; background: var(--navy); border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 2px var(--gold);}
+.gantt-area {font-weight: 700; color: var(--navy); font-size: 1rem;}
+.gantt-times {font-size: 0.8rem; color: var(--muted); margin-top: 2px;}
+
+/* MISC */
+.flex-between{display:flex;justify-content:space-between;align-items:center}
+.sep{height:1px;background:var(--border);margin:16px 0}
+.empty-state{text-align:center;padding:40px 20px;color:var(--muted);font-weight:600}
+.tabs{display:flex;gap:4px;border-bottom:2px solid var(--border);margin-bottom:16px}
+.tab{padding:8px 16px;cursor:pointer;font-weight:700;text-transform:uppercase;font-size:.8rem;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px}
+.tab.active{color:var(--navy);border-bottom-color:var(--gold)}
+.tab-content{display:none}
+.tab-content.active{display:block}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div id="topbar">
+  <div class="logo">
+    <!-- Logo Oficial Solicitado -->
+    <img src="https://jerseystorehn.com/cdn/shop/files/JS_Mesa_de_trabajo_1_180x.png?v=1710366966" onerror="this.style.display='none'" alt="Logo Jersey Store">
+    <div class="logo-txt">JS <span> FACTORY</span></div>
+  </div>
+  <div class="role-bar">
+    <label><i class="fas fa-user-tag"></i> Rol:</label>
+    <select id="roleSwitcher" onchange="switchRole(this.value)">
+      <option value="admin">📊 Administración</option>
+      <option value="tienda">🏪 Tienda / Ventas</option>
+      <option value="disenador">🎨 Diseño</option>
+      <option value="Impresion">🖨️ Impresión</option>
+      <option value="Calandrado">♨️ Calandrado</option>
+      <option value="Corte">✂️ Corte</option>
+      <option value="Confeccion">🧵 Confección</option>
+      <option value="Planchado">👕 Planchado</option>
+      <option value="Empaque">📦 Empaque/Etiquetas</option>
+    </select>
+  </div>
+</div>
+
+<!-- SIDEBAR -->
+<div id="sidebar">
+  <div class="sb-section">Gestión</div>
+  <div class="sb-item active" data-role="admin" onclick="switchRole('admin')"><i class="fas fa-chart-line"></i>Dashboard Admin</div>
+  <div class="sb-section">Comercial</div>
+  <div class="sb-item" data-role="tienda" onclick="switchRole('tienda')"><i class="fas fa-store"></i>Panel de Tienda</div>
+  <div class="sb-item" data-role="disenador" onclick="switchRole('disenador')"><i class="fas fa-palette"></i>Diseño / Arte</div>
+  <div class="sb-section">Línea de Producción</div>
+  <div class="sb-item" data-role="Impresion" onclick="switchRole('Impresion')"><i class="fas fa-print"></i>Impresión</div>
+  <div class="sb-item" data-role="Calandrado" onclick="switchRole('Calandrado')"><i class="fas fa-fire"></i>Calandrado</div>
+  <div class="sb-item" data-role="Corte" onclick="switchRole('Corte')"><i class="fas fa-cut"></i>Corte</div>
+  <div class="sb-item" data-role="Confeccion" onclick="switchRole('Confeccion')"><i class="fas fa-ring"></i>Confección</div>
+  <div class="sb-item" data-role="Planchado" onclick="switchRole('Planchado')"><i class="fas fa-tshirt"></i>Planchado</div>
+  <div class="sb-item" data-role="Empaque" onclick="switchRole('Empaque')"><i class="fas fa-boxes"></i>Empaque</div>
+</div>
+
+<!-- MAIN CONTENT -->
+<div id="main">
+
+  <!-- ==================== PAGE: ADMIN ==================== -->
+  <div id="page-admin" class="page active">
+    <div class="page-title"><div class="icon-badge"><i class="fas fa-chart-line"></i></div><h2>Administración General</h2></div>
+    
+    <div class="tabs">
+      <div class="tab active" onclick="switchAdminTab('dash', this)">Dashboard</div>
+      <div class="tab" onclick="switchAdminTab('config', this)">Configuración & Productos</div>
+      <div class="tab" onclick="switchAdminTab('inv', this)">Inventario</div>
+      <div class="tab" onclick="switchAdminTab('mockups', this)">Asignar Mockups</div>
+    </div>
+
+    <!-- ADMIN TAB: DASHBOARD -->
+    <div id="atab-dash" class="tab-content active">
+      <div class="grid4 mb16">
+        <div class="kpi gold"><div class="kpi-label">Órdenes Activas</div><div class="kpi-val" id="ak-activas">0</div></div>
+        <div class="kpi red"><div class="kpi-label">Con Correcciones</div><div class="kpi-val" id="ak-errores">0</div></div>
+        <div class="kpi green"><div class="kpi-label">Entregadas</div><div class="kpi-val" id="ak-entregadas">0</div></div>
+        <div class="kpi"><div class="kpi-label">Saldos Pendientes</div><div class="kpi-val text-danger" id="ak-saldo">L.0</div></div>
+      </div>
+      <div class="card"><div class="card-head"><i class="fas fa-history"></i> Historial Global de Órdenes & Errores</div><div class="card-body table-wrap"><table id="tbl-admin-history"><thead><tr><th>OP</th><th>Cliente</th><th>Estado Gral</th><th>Piezas Listas</th><th>Errores Reg.</th><th>Tiempos</th><th>Acción</th></tr></thead><tbody id="tbody-admin-history"></tbody></table></div></div>
+    </div>
+
+    <!-- ADMIN TAB: CONFIGURACION -->
+    <div id="atab-config" class="tab-content">
+      <div class="grid2">
+        <div class="card">
+          <div class="card-head">Crear Tipo de Producto</div>
+          <div class="card-body">
+            <div class="form-group"><label>Nombre del Producto</label><input type="text" class="form-ctrl" id="cfg-prod-name" placeholder="Ej. Kit Uniforme, Polo, Buzo"></div>
+            <div class="form-group"><label>Partes de fabricación (Separadas por coma)</label><textarea class="form-ctrl" id="cfg-prod-parts" placeholder="Ej. Frente, Espalda, Manga Izq, Manga Der, Cuello, Pierna Frontal, Pierna Trasera"></textarea></div>
+            <button class="btn btn-navy" onclick="crearProducto()"><i class="fas fa-save"></i> Guardar Producto</button>
+            <div class="sep"></div>
+            <ul id="list-productos" style="list-style:none;padding:0;font-size:.85rem"></ul>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head">Usuarios Diseñadores</div>
+          <div class="card-body">
+            <div class="flex-between gap-10 mb16">
+              <input type="text" class="form-ctrl" id="cfg-dis-name" placeholder="Nombre del diseñador">
+              <button class="btn btn-navy" onclick="agregarDisenador()">Agregar</button>
+            </div>
+            <ul id="list-disenadores" style="list-style:none;padding:0;font-size:.85rem"></ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ADMIN TAB: INVENTARIO -->
+    <div id="atab-inv" class="tab-content">
+      <div class="card mb16">
+        <div class="card-head">Registrar Consumible Extra</div>
+        <div class="card-body grid4">
+          <div class="form-group"><label>Nombre</label><input type="text" class="form-ctrl" id="inv-name"></div>
+          <div class="form-group"><label>Tipo</label><select class="form-ctrl" id="inv-type"><option value="Tela">Tela</option><option value="Etiqueta">Etiqueta</option><option value="Otro">Otro Insumo</option></select></div>
+          <div class="form-group"><label>Unidad Medida</label><input type="text" class="form-ctrl" id="inv-unit" placeholder="Metros, Unidades..."></div>
+          <div class="form-group"><label>Stock Inicial</label><input type="number" class="form-ctrl" id="inv-stock"></div>
+          <button class="btn btn-navy" style="grid-column:1/-1" onclick="agregarInventario()"><i class="fas fa-plus"></i> Agregar a Inventario</button>
+        </div>
+      </div>
+      <div class="card"><div class="card-head">Estado de Inventario (Precargado con Telas y Etiquetas)</div><div class="card-body table-wrap"><table><thead><tr><th>Insumo</th><th>Tipo</th><th>Stock Actual</th><th>Unidad</th><th>Acción</th></tr></thead><tbody id="tbody-inventario"></tbody></table></div></div>
+    </div>
+
+    <!-- ADMIN TAB: MOCKUPS -->
+    <div id="atab-mockups" class="tab-content">
+      <div class="card"><div class="card-head">Asignación de Solicitudes de Arte</div><div class="card-body table-wrap"><table><thead><tr><th>ID</th><th>Tienda</th><th>Cliente</th><th>Referencias</th><th>Asignar A</th><th>Acción</th></tr></thead><tbody id="tbody-admin-mockups"></tbody></table></div></div>
+    </div>
+  </div>
+
+  <!-- ==================== PAGE: TIENDA ==================== -->
+  <div id="page-tienda" class="page">
+    <div class="page-title">
+      <div style="display:flex; gap:12px; align-items:center; width:100%;">
+        <div class="icon-badge"><i class="fas fa-store"></i></div>
+        <h2>Panel de Tienda</h2>
+        <div style="margin-left:auto; display:flex; align-items:center; gap:10px;">
+          <span class="fw700 text-muted" style="font-size:0.85rem">📍 TIENDA ACTUAL:</span>
+          <select id="t-global-tienda" class="form-ctrl" style="width:200px; font-weight:700; border-color:var(--gold);" onchange="renderTienda()">
+            <option value="Tegucigalpa">Tegucigalpa</option>
+            <option value="San Pedro Sula">San Pedro Sula</option>
+            <option value="Choluteca">Choluteca</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    
+    <div class="grid2 mb16">
+      <div class="card">
+        <div class="card-head">1. Solicitar Arte / Mockup</div>
+        <div class="card-body">
+          <div class="form-group"><label>Cliente</label><input type="text" id="t-cliente" class="form-ctrl"></div>
+          <div class="form-group"><label>Descripción para Diseño</label><textarea id="t-desc" class="form-ctrl"></textarea></div>
+          <div class="form-group"><label>Subir Imágenes de Referencia (Cliente)</label>
+            <div class="file-upload" onclick="document.getElementById('t-file').click()"><i class="fas fa-upload text-gold" style="font-size:2rem"></i><br>Click para subir imagen</div>
+            <input type="file" id="t-file" style="display:none" accept="image/*" onchange="previewImg(this, 't-preview')">
+            <img id="t-preview" class="img-preview">
+          </div>
+          <button class="btn btn-gold w-100" style="width:100%" onclick="solicitarMockup()">Enviar Solicitud a Diseño</button>
+        </div>
+      </div>
+      <div class="card"><div class="card-head">2. Estado de Artes (Aprobación)</div><div class="card-body table-wrap" style="padding:0"><table><thead><tr><th>ID</th><th>Cliente</th><th>Estado</th><th>Acción</th></tr></thead><tbody id="tbody-tienda-mockups"></tbody></table></div></div>
+    </div>
+    
+    <div class="card"><div class="card-head">3. Seguimiento y Recepción de Órdenes Oficiales</div><div class="card-body table-wrap" style="padding:0"><table><thead><tr><th>OP</th><th>Cliente</th><th>Progreso</th><th>Saldos</th><th>Acción Tienda</th></tr></thead><tbody id="tbody-tienda-ops"></tbody></table></div></div>
+  </div>
+
+  <!-- ==================== PAGE: DISEÑADOR ==================== -->
+  <div id="page-disenador" class="page">
+    <div class="page-title"><div class="icon-badge"><i class="fas fa-palette"></i></div><h2>Panel de Diseño</h2></div>
+    <div class="card"><div class="card-head">Mis Artes Asignados</div><div class="card-body table-wrap"><table><thead><tr><th>ID</th><th>Cliente / Tienda</th><th>Referencias</th><th>Subir Arte Final</th><th>Acción</th></tr></thead><tbody id="tbody-dis-artes"></tbody></table></div></div>
+  </div>
+
+  <!-- ==================== PAGE: PRODUCCION (GENERICA) ==================== -->
+  <div id="page-produccion" class="page">
+    <div class="flex-between mb16">
+      <div class="page-title" style="margin:0"><div class="icon-badge"><i class="fas fa-industry"></i></div><h2 id="prod-area-title">Área</h2></div>
+      <div id="kanban-toggle-container" style="display:none"><button class="btn btn-navy" onclick="toggleKanban()"><i class="fas fa-columns"></i> Vista Kanban por Tela</button></div>
+    </div>
+    
+    <div id="view-normal" class="prod-grid"></div>
+    <div id="view-kanban" class="kanban-board" style="display:none"></div>
+  </div>
+
+</div>
+
+<!-- ========================================================= -->
+<!-- MODALES -->
+<!-- ========================================================= -->
+
+<!-- MODAL: CREAR OP (DESDE TIENDA) -->
+<div class="modal-bg" id="modal-op">
+  <div class="modal-box">
+    <div class="modal-head"><h3>Generar Orden de Producción (OP) Oficial</h3><button class="modal-close btn-ghost" style="border:none;color:#fff" onclick="closeModal('modal-op')"><i class="fas fa-times"></i></button></div>
+    <div class="modal-body">
+      <input type="hidden" id="op-mockup-id">
+      
+      <!-- Fila 1 -->
+      <div class="grid3 mb16">
+        <div class="form-group"><label>Cliente</label><input type="text" id="op-cliente" class="form-ctrl" readonly></div>
+        <div class="form-group"><label>Tipo de Producto</label><select id="op-producto" class="form-ctrl" onchange="renderPlayerTable()"></select></div>
+        <div class="form-group"><label>Fecha Entrega</label><input type="date" id="op-fecha" class="form-ctrl"></div>
+      </div>
+      
+      <!-- Fila 2: Variables del cliente -->
+      <div class="grid4 mb16" style="background:#f8fafc; padding:12px; border-radius:8px; border:1px solid var(--border)">
+        <div class="form-group"><label>Tipo de Cuello</label>
+          <select id="op-cuello" class="form-ctrl">
+            <option>CUELLO REDONDO</option><option>CUELLO V</option><option>CUELLO V TRASLAPADO</option><option>CUELLO REDONDO TRASLAPADO</option><option>CUELLO V POLO</option><option>CUELLO POLO</option><option>CUELLO CHINO</option><option>CUELLO CHINO SIN BOTON</option><option>CUELLO POLO SIN BOTON</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Tipo de Manga</label>
+          <select id="op-manga" class="form-ctrl">
+            <option>MANGA LARGA</option><option>MANGA LARGA CON PROTECCION</option><option>MANGA CORTA CON PUÑO</option><option>MANGA CORTA</option><option>MANGA ESCOTADA</option><option>MANGA ¾</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Tipo de Costado</label>
+          <select id="op-costado" class="form-ctrl">
+             <option>COSTADO CON PANEL</option><option>COSTADO CON VENTANA</option><option>COSTADO NORMAL</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Tipo de Logo</label>
+          <select id="op-logo" class="form-ctrl">
+             <option>3D PRO</option><option>TEXTPRO</option><option>SUBLIMADO</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Color de Medias</label>
+          <select id="op-medias" class="form-ctrl">
+             <option>BLANCA</option><option>NEGRA</option><option>ROJA</option><option>NAVY</option><option>VERDE</option><option>AZUL ROYAL</option><option>ROSADAS</option><option>AMARILLAS</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Regalías</label>
+          <select id="op-regalias" class="form-ctrl">
+             <option>NINGUNA</option><option>BUFANDA, BANDERA Y GAFETE</option><option>BANDERA</option><option>GAFETE</option><option>BUFANDA</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Impresora</label>
+          <select id="op-impresora" class="form-ctrl">
+             <option>EPSON 9570</option><option>EPSON 9470H</option>
+          </select>
+        </div>
+      </div>
+      
+      <!-- Detalle Dinámico de Jugadores/Cantidades -->
+      <div class="flex-between mb8"><h4 class="bc text-navy">Detalle de Piezas / Jugadores</h4><button class="btn btn-ghost btn-sm" onclick="addPlayerRow()"><i class="fas fa-plus"></i> Agregar Fila</button></div>
+      <div class="table-wrap mb16">
+        <table id="tbl-op-items">
+          <thead><tr><th>Nombre/Referencia</th><th>Número</th><th>Género</th><th>Talla</th><th>Tela Base</th><th>Acción</th></tr></thead>
+          <tbody id="tbody-op-items"></tbody>
+        </table>
+      </div>
+      
+      <div class="sep"></div>
+      <div class="grid3">
+        <div class="form-group"><label>Total Factura (L.) <span class="text-danger">*Obligatorio</span></label><input type="number" id="op-total" class="form-ctrl" placeholder="Ej. 5000" oninput="calcSaldo()" required></div>
+        <div class="form-group"><label>Abono (L.)</label><input type="number" id="op-abono" class="form-ctrl" placeholder="Ej. 2500" oninput="calcSaldo()"></div>
+        <div class="form-group"><label>Saldo Pendiente</label><input type="text" id="op-saldo" class="form-ctrl text-danger fw700" readonly></div>
+      </div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal('modal-op')">Cancelar</button><button class="btn btn-gold" onclick="guardarOP()"><i class="fas fa-rocket"></i> Enviar a Producción</button></div>
+  </div>
+</div>
+
+<!-- MODAL: CHECKLIST PRODUCCIÓN GRANULAR (ACORDEÓN) -->
+<div class="modal-bg" id="modal-checklist">
+  <div class="modal-box">
+    <div class="modal-head"><h3 id="chk-title">Checklist</h3><button class="modal-close btn-ghost" style="border:none;color:#fff" onclick="closeModal('modal-checklist')"><i class="fas fa-times"></i></button></div>
+    <div class="modal-body">
+      <div class="flex-between mb16">
+        <button class="btn btn-success" id="btn-start-time" onclick="registrarTiempo('inicio')"><i class="fas fa-play"></i> Iniciar Trabajo</button>
+        <span class="badge bg-blue" id="chk-timer">Tiempo: --:--</span>
+      </div>
+      
+      <div id="chk-container"></div>
+      
+      <div class="sep"></div>
+      <div class="card mb16">
+        <div class="card-head" style="background:#f1f5f9;color:var(--navy);font-size:.9rem;padding:8px 12px"><i class="fas fa-comments"></i> Mensajes y Alertas Internas</div>
+        <div class="card-body" style="padding:10px">
+          <div class="chat-box mb8" id="chk-chat"></div>
+          <div style="display:flex;gap:8px"><input type="text" id="chk-msg" class="form-ctrl" placeholder="Escribir a admin/otras áreas..."><button class="btn btn-navy" onclick="enviarMensaje()"><i class="fas fa-paper-plane"></i></button></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-danger" onclick="abrirReporteError()"><i class="fas fa-exclamation-triangle"></i> Reportar Error</button>
+      <button class="btn btn-gold" id="btn-save-chk" onclick="guardarChecklist()"><i class="fas fa-save"></i> Guardar Avance y Avanzar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: RECEPCIÓN TIENDA (CHECKLIST FINAL DE PIEZAS COMPLETAS) -->
+<div class="modal-bg" id="modal-recepcion">
+  <div class="modal-box" style="max-width:600px;">
+    <div class="modal-head"><h3 id="rec-title">Checklist de Recepción en Tienda</h3><button class="modal-close btn-ghost" style="border:none;color:#fff" onclick="closeModal('modal-recepcion')"><i class="fas fa-times"></i></button></div>
+    <div class="modal-body">
+      <div class="alert bg-info mb16" style="padding:10px; border-radius:8px;">
+        <strong><i class="fas fa-info-circle"></i> Instrucción:</strong> Verifique físicamente cada pieza recibida en el paquete y márquela. No podrá cerrar la orden si faltan piezas o si hay saldo pendiente.
+      </div>
+      
+      <div id="rec-container" style="display:grid; gap:8px;"></div>
+      
+      <div class="sep"></div>
+      <div class="flex-between">
+        <div style="font-size:1.1rem; font-weight:700;">Saldo Actual: <span id="rec-saldo" class="text-danger">L.0</span></div>
+        <button class="btn btn-navy" onclick="pagarDesdeRecepcion()"><i class="fas fa-money-bill"></i> Registrar Pago</button>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('modal-recepcion')">Cancelar</button>
+      <button class="btn btn-success" id="btn-cerrar-recepcion" disabled onclick="confirmarRecepcionTienda()"><i class="fas fa-check-double"></i> Completar y Cerrar OP</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: HISTORIAL Y REPORTE UNIVERSAL (PDF/GANTT) -->
+<div class="modal-bg" id="modal-historial">
+  <div class="modal-box" style="background:#f0f2f5;">
+    <div class="modal-head">
+      <h3><i class="fas fa-file-invoice"></i> Reporte e Historial Completo</h3>
+      <div>
+        <button class="btn btn-navy btn-sm" onclick="descargarPDF()"><i class="fas fa-file-pdf"></i> Descargar PDF</button>
+        <button class="modal-close btn-ghost" style="border:none;color:#fff; margin-left:10px" onclick="closeModal('modal-historial')"><i class="fas fa-times"></i></button>
+      </div>
+    </div>
+    <div class="modal-body" id="pdf-content" style="background:#fff; padding:30px;">
+      <!-- CABECERA PDF -->
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid var(--navy); padding-bottom:15px; margin-bottom:20px;">
+        <div>
+          <h1 class="bc text-navy" style="font-size:2.5rem; margin:0;">JS FACTORY</h1>
+          <div class="text-muted" style="font-size:0.9rem;">Reporte de Orden de Producción</div>
+        </div>
+        <div style="text-align:right;">
+          <h2 class="text-gold" id="hist-op-id" style="font-size:2rem; margin:0;">OP-XXXXXX</h2>
+          <div id="hist-status" style="font-size:1.1rem; font-weight:700;">Estado</div>
+        </div>
+      </div>
+
+      <!-- INFO GENERAL -->
+      <div class="grid3 mb16">
+        <div><div class="text-muted fs12">Cliente / Tienda</div><div class="fw700" id="hist-cliente" style="font-size:1.1rem;"></div></div>
+        <div><div class="text-muted fs12">Fecha Entrega</div><div class="fw700" id="hist-fecha"></div></div>
+        <div><div class="text-muted fs12">Tipo de Producto</div><div class="fw700" id="hist-producto"></div></div>
+      </div>
+      <div class="grid4 mb16" style="background:#f8fafc; padding:12px; border-radius:8px;">
+        <div><div class="text-muted fs12">Cuello / Manga</div><div class="fw700" id="hist-cuello-manga"></div></div>
+        <div><div class="text-muted fs12">Costado / Logo</div><div class="fw700" id="hist-costado-logo"></div></div>
+        <div><div class="text-muted fs12">Medias / Regalías</div><div class="fw700" id="hist-medias-regalias"></div></div>
+        <div><div class="text-muted fs12">Impresora</div><div class="fw700" id="hist-impresora"></div></div>
+      </div>
+
+      <div class="sep"></div>
+
+      <!-- FINANCIERO -->
+      <h3 class="bc text-navy mb8"><i class="fas fa-coins text-gold"></i> Historial Financiero</h3>
+      <div class="grid3 mb16">
+        <div class="kpi" style="padding:10px;"><div class="kpi-label">Total Factura</div><div class="kpi-val" id="hist-total" style="font-size:1.5rem;">L.0</div></div>
+        <div class="kpi" style="padding:10px;"><div class="kpi-label">Total Abonado</div><div class="kpi-val text-success" id="hist-abono" style="font-size:1.5rem;">L.0</div></div>
+        <div class="kpi" style="padding:10px;"><div class="kpi-label">Saldo Final</div><div class="kpi-val text-danger" id="hist-saldo" style="font-size:1.5rem;">L.0</div></div>
+      </div>
+      <div class="table-wrap mb16">
+        <table>
+          <thead style="background:#f1f5f9; color:var(--navy);"><tr><th>Fecha del Pago</th><th>Monto (L.)</th></tr></thead>
+          <tbody id="hist-pagos-body"></tbody>
+        </table>
+      </div>
+
+      <div class="sep"></div>
+
+      <!-- GANTT / TIMELINE -->
+      <h3 class="bc text-navy mb8"><i class="fas fa-stream text-gold"></i> Línea de Tiempo (Producción)</h3>
+      <div class="gantt-container" id="hist-gantt"></div>
+
+      <div class="sep"></div>
+
+      <!-- ERRORES Y CHAT -->
+      <h3 class="bc text-navy mb8"><i class="fas fa-exclamation-triangle text-danger"></i> Reporte de Errores e Incidencias</h3>
+      <div class="table-wrap mb16">
+        <table>
+          <thead style="background:var(--danger); color:#fff;"><tr><th>Fecha / Hora</th><th>Área</th><th>Pieza</th><th>Descripción del Problema</th></tr></thead>
+          <tbody id="hist-errores-body"></tbody>
+        </table>
+      </div>
+
+      <h3 class="bc text-navy mb8"><i class="fas fa-comments text-info"></i> Registro de Comunicación (Chat)</h3>
+      <div id="hist-chat-body" style="background:#f8fafc; padding:15px; border-radius:8px; border:1px solid var(--border); font-size:0.85rem; max-height:250px; overflow-y:auto;"></div>
+
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: REPORTE DE ERROR (PRODUCCIÓN) -->
+<div class="modal-bg" id="modal-error" style="z-index:6000">
+  <div class="modal-box" style="max-width:400px">
+    <div class="modal-head" style="background:var(--danger)"><h3>Reportar Pieza Dañada</h3><button class="modal-close btn-ghost" style="border:none;color:#fff" onclick="closeModal('modal-error')"><i class="fas fa-times"></i></button></div>
+    <div class="modal-body">
+      <div class="form-group"><label>¿Qué pieza falló?</label><select id="err-pieza" class="form-ctrl"></select></div>
+      <div class="form-group"><label>Descripción del daño</label><textarea id="err-desc" class="form-ctrl" placeholder="Ej. Mancha de tinta, tela cortada mal..."></textarea></div>
+      <div class="text-muted" style="font-size:.75rem">La pieza regresará a Impresión. La orden quedará marcada con correcciones.</div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-danger" onclick="procesarError()">Confirmar Error</button></div>
+  </div>
+</div>
+
+<script>
+// =========================================================
+// PRECARGA DE CONSUMIBLES (TELAS, ETIQUETAS, AUTÉNTICO)
+// =========================================================
+const TELAS_PRECARGADAS =['SPORTS ADIDAS','OLIMPIC ADIDAS','EYELET','DRY EDGE','SPEED DRY','POLIEATRECH','QUINA','LUMIX','MINI EYELET','DRYAMOR','JS NOVA','JS COOL PRO','JS PRIME','JS PRO DRY','JS PRO MAX','TELA BUZO BLANCA','TELA BUZO ROJA','TELA BUZO NEGRA','TELA BUZO NAVY','TELA POLICOTON'];
+const ETIQUETAS_PRECARGADAS =['JS 3D - ROJO','JS 3D - NEGRO','JS 3D - BLANCO','JS 3D - DORADO','JS 3D - VERDE','JS 3D - AMARILO','JS 3D - AZUL ROYAL','JS 3D - AZUL NAVY','JS 3D - ANARANJADO','JS 3D - REFLECTIVO','AUTENTICO - 3D','AUTENTICO - 3D HOLOGRAFIC','AUTENTICO - DTF'];
+
+let dbInventoryInit =[];
+TELAS_PRECARGADAS.forEach((t, i) => dbInventoryInit.push({id: 'INV-T'+i, name: t, type: 'Tela', unit: 'Metros', stock: 100}));
+ETIQUETAS_PRECARGADAS.forEach((e, i) => dbInventoryInit.push({id: 'INV-E'+i, name: e, type: 'Etiqueta', unit: 'Unidades', stock: 500}));
+
+// =========================================================
+// BASE DE DATOS LOCAL
+// =========================================================
+let DB = {
+  config: {
+    products:[
+      {id: 'PR-1', name: 'Kit Camiseta y Short', parts:['Frente Camiseta', 'Espalda Camiseta', 'Manga Izquierda', 'Manga Derecha', 'Cuello', 'Pierna Frontal', 'Pierna Trasera']}
+    ],
+    inventory: dbInventoryInit,
+    designers: ['Diseñador Master']
+  },
+  mockups:[],
+  orders:[]
+};
+
+const WORKFLOW =['Impresion', 'Calandrado', 'Corte', 'Confeccion', 'Planchado', 'Empaque', 'Tienda', 'Entregado'];
+
+let currentRole = 'admin';
+let activeOP = null;
+let activeArea = null;
+
+// =========================================================
+// CORE & NAVEGACIÓN
+// =========================================================
+function switchRole(role){
+  currentRole = role;
+  document.getElementById('roleSwitcher').value = role;
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.sb-item').forEach(s=>s.classList.remove('active'));
+  document.querySelector(`.sb-item[data-role="${role}"]`)?.classList.add('active');
+
+  if(role==='admin'){ document.getElementById('page-admin').classList.add('active'); renderAdmin(); }
+  else if(role==='tienda'){ document.getElementById('page-tienda').classList.add('active'); renderTienda(); }
+  else if(role==='disenador'){ document.getElementById('page-disenador').classList.add('active'); renderDisenador(); }
+  else { 
+    document.getElementById('page-produccion').classList.add('active'); 
+    activeArea = role;
+    renderProduccion(); 
+  }
+}
+
+function switchAdminTab(tab, el){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById(`atab-${tab}`).classList.add('active');
+}
+
+function previewImg(input, imgId){
+  const file = input.files[0];
+  if(file){
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = document.getElementById(imgId);
+      img.src = e.target.result;
+      img.style.display = 'block';
+      input.dataset.base64 = e.target.result;
+    }
+    reader.readAsDataURL(file);
+  }
+}
+
+const genId = prefix => prefix + Date.now().toString().slice(-6);
+
+// =========================================================
+// FUNCIONES DE ADMINISTRACIÓN
+// =========================================================
+function renderAdmin(){
+  const activas = DB.orders.filter(o=>o.statusGlobal!=='Entregado');
+  const errores = DB.orders.filter(o=>o.errors && o.errors.length>0 && o.statusGlobal!=='Entregado');
+  const entregadas = DB.orders.filter(o=>o.statusGlobal==='Entregado');
+  const saldoTotal = activas.reduce((acc,o)=>acc + (o.total - o.abono), 0);
+  
+  document.getElementById('ak-activas').textContent = activas.length;
+  document.getElementById('ak-errores').textContent = errores.length;
+  document.getElementById('ak-entregadas').textContent = entregadas.length;
+  document.getElementById('ak-saldo').textContent = 'L.'+saldoTotal;
+
+  document.getElementById('tbody-admin-history').innerHTML = DB.orders.map(o=>`
+    <tr>
+      <td class="fw700">${o.id}</td>
+      <td>${o.cliente}</td>
+      <td><span class="badge bg-blue">${o.statusGlobal}</span></td>
+      <td>${o.items.filter(i=>i.completed).length} / ${o.items.length}</td>
+      <td><span class="text-danger fw700">${o.errors?o.errors.length:0}</span></td>
+      <td class="text-muted" style="font-size:.75rem">Inicio: ${o.times['Impresion']?.inicio||'--'}</td>
+      <td><button class="btn btn-navy btn-sm" onclick="abrirHistorial('${o.id}')"><i class="fas fa-file-alt"></i> Ver Todo</button></td>
+    </tr>`).join('') || '<tr><td colspan="7" class="empty-state">No hay órdenes en el sistema</td></tr>';
+
+  document.getElementById('list-productos').innerHTML = DB.config.products.map(p=>`<li class="mb8"><i class="fas fa-box text-gold"></i> <b>${p.name}</b> <br><span class="text-muted">${p.parts.join(', ')}</span></li>`).join('') || 'Sin productos. Cree uno arriba.';
+  document.getElementById('list-disenadores').innerHTML = DB.config.designers.map(d=>`<li><i class="fas fa-user"></i> ${d}</li>`).join('') || 'Sin diseñadores.';
+  
+  document.getElementById('tbody-inventario').innerHTML = DB.config.inventory.map(i=>`
+    <tr>
+      <td class="fw700">${i.name}</td><td>${i.type}</td>
+      <td>${i.stock}</td><td>${i.unit}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick="sumarStock('${i.id}')">+ Stock</button></td>
+    </tr>`).join('');
+
+  const mockups = DB.mockups.filter(m=>m.estado==='Pendiente Asignación');
+  document.getElementById('tbody-admin-mockups').innerHTML = mockups.map(m=>`
+    <tr>
+      <td>${m.id}</td><td>${m.tienda}</td><td>${m.cliente}</td>
+      <td>${m.imgRef ? `<a href="${m.imgRef}" target="_blank">Ver Img</a>` : 'N/A'}</td>
+      <td>
+        <select class="form-ctrl" id="asig-${m.id}">
+          <option value="">Seleccione...</option>
+          ${DB.config.designers.map(d=>`<option value="${d}">${d}</option>`).join('')}
+        </select>
+      </td>
+      <td><button class="btn btn-navy btn-sm" onclick="asignarDisenador('${m.id}')">Asignar</button></td>
+    </tr>`).join('') || '<tr><td colspan="6" class="empty-state">No hay mockups pendientes</td></tr>';
+}
+
+function crearProducto(){
+  const name = document.getElementById('cfg-prod-name').value.trim();
+  const parts = document.getElementById('cfg-prod-parts').value.split(',').map(s=>s.trim()).filter(s=>s);
+  if(!name || !parts.length) return alert('Llene nombre y al menos una pieza');
+  DB.config.products.push({id:genId('PR-'), name, parts});
+  document.getElementById('cfg-prod-name').value=''; document.getElementById('cfg-prod-parts').value='';
+  renderAdmin();
+}
+function agregarDisenador(){
+  const name = document.getElementById('cfg-dis-name').value.trim();
+  if(!name) return;
+  DB.config.designers.push(name);
+  document.getElementById('cfg-dis-name').value='';
+  renderAdmin();
+}
+function agregarInventario(){
+  const name = document.getElementById('inv-name').value.trim();
+  const type = document.getElementById('inv-type').value;
+  const unit = document.getElementById('inv-unit').value.trim();
+  const stock = parseFloat(document.getElementById('inv-stock').value)||0;
+  if(!name || !unit) return alert('Faltan datos');
+  DB.config.inventory.push({id:genId('INV-'), name, type, unit, stock});
+  renderAdmin();
+}
+function sumarStock(id){
+  const obj = DB.config.inventory.find(i=>i.id===id);
+  const qty = parseFloat(prompt(`Sumar inventario a ${obj.name}:`));
+  if(qty){ obj.stock += qty; renderAdmin(); }
+}
+function asignarDisenador(id){
+  const des = document.getElementById(`asig-${id}`).value;
+  if(!des) return alert('Seleccione diseñador');
+  const m = DB.mockups.find(x=>x.id===id);
+  m.designer = des; m.estado = 'En Diseño';
+  renderAdmin();
+}
+
+// =========================================================
+// FLUJO TIENDA (MOCKUPS Y OP) CON FILTRO GLOBAL
+// =========================================================
+function renderTienda(){
+  const globalTienda = document.getElementById('t-global-tienda').value;
+  
+  const misMockups = DB.mockups.filter(m => m.tienda === globalTienda);
+  document.getElementById('tbody-tienda-mockups').innerHTML = misMockups.map(m=>`
+    <tr>
+      <td class="fw700">${m.id}</td><td>${m.cliente}</td>
+      <td><span class="badge ${m.estado==='Aprobado'?'bg-green':m.estado==='Revisión Tienda'?'bg-info':'bg-gold'}">${m.estado}</span></td>
+      <td>
+        ${m.imgFinal ? `<a href="${m.imgFinal}" target="_blank" class="btn btn-ghost btn-sm" style="margin-bottom:6px;">Ver Arte Final</a><br>` : ''}
+        
+        ${m.estado==='Revisión Tienda' ? `
+          <button class="btn btn-success btn-sm" onclick="evaluarMockup('${m.id}', true)"><i class="fas fa-check"></i> Aprobar</button>
+          <button class="btn btn-danger btn-sm" onclick="evaluarMockup('${m.id}', false)"><i class="fas fa-times"></i> Rechazar</button>
+        ` : ''}
+
+        ${m.estado==='Aprobado' && !m.opCreated ? `<button class="btn btn-gold btn-sm" onclick="abrirCrearOP('${m.id}')">Crear OP</button>` : ''}
+      </td>
+    </tr>`).join('') || '<tr><td colspan="4" class="empty-state">Sin solicitudes registradas en esta tienda</td></tr>';
+
+  const misOps = DB.orders.filter(o => o.tienda === globalTienda);
+  document.getElementById('tbody-tienda-ops').innerHTML = misOps.map(o=>{
+    const saldo = o.total - o.abono;
+    const isReady = o.statusGlobal === 'Tienda';
+    return `<tr>
+      <td class="fw700">${o.id}</td><td>${o.cliente}</td>
+      <td>
+        ${o.statusGlobal} 
+        ${o.errors?.length ? `<span class="badge bg-red" title="Tiene correcciones">!</span>` : ''}
+        ${isReady ? `<br><span class="text-success fw700 fs12"><i class="fas fa-bell"></i> Paquete Disponible en Tienda</span>` : ''}
+      </td>
+      <td>Saldo: L.${saldo}</td>
+      <td>
+        <button class="btn btn-ghost btn-sm" onclick="abrirHistorial('${o.id}')"><i class="fas fa-eye"></i> Historial</button>
+        ${isReady ? `<button class="btn btn-gold btn-sm" onclick="abrirRecepcionTienda('${o.id}')"><i class="fas fa-box-open"></i> Recibir y Cerrar</button>`:''}
+      </td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="5" class="empty-state">Sin órdenes activas en esta tienda</td></tr>';
+}
+
+function solicitarMockup(){
+  const cliente = document.getElementById('t-cliente').value;
+  const tienda = document.getElementById('t-global-tienda').value;
+  const desc = document.getElementById('t-desc').value;
+  const imgInput = document.getElementById('t-file');
+  if(!cliente) return alert('Ingrese cliente');
+  
+  DB.mockups.push({
+    id: genId('M-'), cliente, tienda, desc,
+    imgRef: imgInput.dataset.base64 || null,
+    estado: 'Pendiente Asignación', designer: null, opCreated: false
+  });
+  
+  document.getElementById('t-cliente').value=''; document.getElementById('t-desc').value='';
+  document.getElementById('t-preview').style.display='none'; imgInput.value='';
+  renderTienda();
+  alert('Solicitud enviada a Administración');
+}
+
+function evaluarMockup(id, isApproved){
+  const m = DB.mockups.find(x=>x.id===id);
+  if(isApproved){
+    m.estado = 'Aprobado';
+    alert('Arte aprobado. Ya puede crear la OP oficial.');
+  } else {
+    m.estado = 'En Diseño'; 
+    m.imgFinal = null; 
+    alert('Arte rechazado. Ha sido devuelto al diseñador para corrección.');
+  }
+  renderTienda();
+}
+
+function abrirCrearOP(mockupId){
+  if(DB.config.products.length===0) return alert('ALERTA: Administración debe crear Productos primero.');
+  
+  const m = DB.mockups.find(x=>x.id===mockupId);
+  document.getElementById('op-mockup-id').value = mockupId;
+  document.getElementById('op-cliente').value = m.cliente;
+  
+  const pSelect = document.getElementById('op-producto');
+  pSelect.innerHTML = DB.config.products.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+  
+  document.getElementById('tbody-op-items').innerHTML = '';
+  addPlayerRow();
+  document.getElementById('modal-op').classList.add('open');
+}
+
+function addPlayerRow(){
+  const telas = DB.config.inventory.filter(i=>i.type==='Tela');
+  const telaOpts = telas.map(t=>`<option value="${t.name}">${t.name}</option>`).join('');
+  
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><input type="text" class="form-ctrl item-nom" placeholder="Nombre"></td>
+    <td><input type="text" class="form-ctrl item-num" placeholder="00" style="width:60px"></td>
+    <td><select class="form-ctrl item-genero"><option>CABALLERO</option><option>DAMA</option><option>NIÑO</option></select></td>
+    <td><select class="form-ctrl item-talla"><option>S</option><option>M</option><option>L</option><option>XL</option><option>2XL</option><option>2</option><option>4</option><option>6</option><option>8</option><option>10</option><option>12</option><option>14</option><option>16</option></select></td>
+    <td><select class="form-ctrl item-tela">${telaOpts}</select></td>
+    <td><button class="btn btn-danger btn-sm" onclick="this.closest('tr').remove()"><i class="fas fa-trash"></i></button></td>
+  `;
+  document.getElementById('tbody-op-items').appendChild(tr);
+}
+
+function calcSaldo(){
+  const t = parseFloat(document.getElementById('op-total').value)||0;
+  const a = parseFloat(document.getElementById('op-abono').value)||0;
+  document.getElementById('op-saldo').value = 'L. '+(t-a);
+}
+
+function guardarOP(){
+  const total = parseFloat(document.getElementById('op-total').value)||0;
+  if(total <= 0) return alert('ES OBLIGATORIO REGISTRAR EL VALOR TOTAL FACTURA DE LA ORDEN.');
+
+  const mockupId = document.getElementById('op-mockup-id').value;
+  const m = DB.mockups.find(x=>x.id===mockupId);
+  const prodId = document.getElementById('op-producto').value;
+  const product = DB.config.products.find(p=>p.id===prodId);
+  const abono = parseFloat(document.getElementById('op-abono').value)||0;
+  
+  const gCuello = document.getElementById('op-cuello').value;
+  const gManga = document.getElementById('op-manga').value;
+  const gCostado = document.getElementById('op-costado').value;
+  const gLogo = document.getElementById('op-logo').value;
+  const gImpresora = document.getElementById('op-impresora').value;
+  const gMedias = document.getElementById('op-medias').value;
+  const gRegalias = document.getElementById('op-regalias').value;
+
+  const items =[];
+  document.querySelectorAll('#tbody-op-items tr').forEach((tr, idx) => {
+    const name = tr.querySelector('.item-nom').value;
+    if(!name) return;
+    
+    const partsState = {};
+    product.parts.forEach(pName => {
+      partsState[pName] = { stage: 'Impresion', checked: false, error: false };
+    });
+
+    items.push({
+      idx, name, num: tr.querySelector('.item-num').value,
+      gender: tr.querySelector('.item-genero').value,
+      size: tr.querySelector('.item-talla').value,
+      fabric: tr.querySelector('.item-tela').value,
+      parts: partsState,
+      completed: false
+    });
+  });
+
+  if(!items.length) return alert('Agregue al menos un item/jugador');
+
+  const pagos =[];
+  if(abono > 0) pagos.push({monto: abono, date: new Date().toLocaleString()});
+
+  const op = {
+    id: genId('OP-'), cliente: m.cliente, tienda: m.tienda,
+    prodId, productName: product.name, total, abono, pagos, statusGlobal: 'Impresion', 
+    cuello: gCuello, manga: gManga, costado: gCostado, logo: gLogo, impresora: gImpresora, medias: gMedias, regalias: gRegalias,
+    fechaEntrega: document.getElementById('op-fecha').value,
+    items, times: {}, messages: [], errors:[]
+  };
+
+  DB.orders.push(op);
+  m.opCreated = true;
+  document.getElementById('modal-op').classList.remove('open');
+  renderTienda();
+  alert('OP Creada y enviada a Impresión');
+}
+
+// =========================================================
+// RECEPCIÓN FINAL EN TIENDA
+// =========================================================
+function abrirRecepcionTienda(opId){
+  activeOP = DB.orders.find(o=>o.id===opId);
+  document.getElementById('rec-title').textContent = `Checklist de Recepción en Tienda - ${activeOP.id}`;
+  
+  let html = '';
+  activeOP.items.forEach((item, idx) => {
+    html += `<div style="display:flex; justify-content:space-between; align-items:center; background:#f1f5f9; padding:10px 15px; border-radius:8px; border:1px solid var(--border);">
+               <div style="font-weight:700;"><i class="fas fa-tshirt text-navy"></i> ${item.name} (${item.size})</div>
+               <input type="checkbox" style="width:20px; height:20px; cursor:pointer;" onchange="verificarRecepcion()" class="check-recepcion">
+             </div>`;
+  });
+  
+  document.getElementById('rec-container').innerHTML = html;
+  document.getElementById('rec-saldo').textContent = `L.${activeOP.total - activeOP.abono}`;
+  document.getElementById('btn-cerrar-recepcion').disabled = true;
+  document.getElementById('modal-recepcion').classList.add('open');
+}
+
+function verificarRecepcion(){
+  const checks = document.querySelectorAll('.check-recepcion');
+  const allChecked = Array.from(checks).every(c => c.checked);
+  document.getElementById('btn-cerrar-recepcion').disabled = !allChecked;
+}
+
+function pagarDesdeRecepcion(){
+  const saldo = activeOP.total - activeOP.abono;
+  if(saldo <= 0) return alert('La orden ya está completamente pagada.');
+  
+  const pago = parseFloat(prompt(`Saldo actual: L.${saldo}. Ingrese monto a abonar:`));
+  if(pago && pago<=saldo) {
+    activeOP.abono += pago;
+    activeOP.pagos.push({monto: pago, date: new Date().toLocaleString()});
+    document.getElementById('rec-saldo').textContent = `L.${activeOP.total - activeOP.abono}`;
+    if(currentRole === 'tienda') renderTienda();
+    alert(`Pago de L.${pago} registrado con éxito.`);
+  }
+}
+
+function confirmarRecepcionTienda(){
+  const saldo = activeOP.total - activeOP.abono;
+  if(saldo > 0) {
+    return alert(`¡ALERTA! El pedido aún tiene un saldo pendiente de L.${saldo}. Debe registrar el pago antes de cerrar la orden.`);
+  }
+  
+  activeOP.statusGlobal = 'Entregado';
+  closeModal('modal-recepcion');
+  renderTienda();
+  alert('¡Orden validada, entregada al cliente y cerrada exitosamente!');
+}
+
+// =========================================================
+// VISOR DE HISTORIAL, GANTT Y EXPORTACIÓN PDF
+// =========================================================
+function abrirHistorial(opId){
+  const op = DB.orders.find(o=>o.id===opId);
+  document.getElementById('hist-op-id').textContent = op.id;
+  document.getElementById('hist-status').textContent = op.statusGlobal.toUpperCase();
+  document.getElementById('hist-status').className = `badge ${op.statusGlobal==='Entregado'?'bg-green':'bg-blue'}`;
+  document.getElementById('hist-cliente').textContent = `${op.cliente} (${op.tienda})`;
+  document.getElementById('hist-fecha').textContent = op.fechaEntrega || 'No definida';
+  document.getElementById('hist-producto').textContent = op.productName;
+  
+  document.getElementById('hist-cuello-manga').textContent = `${op.cuello} / ${op.manga}`;
+  document.getElementById('hist-costado-logo').textContent = `${op.costado} / ${op.logo}`;
+  document.getElementById('hist-medias-regalias').textContent = `${op.medias} / ${op.regalias}`;
+  document.getElementById('hist-impresora').textContent = op.impresora;
+
+  document.getElementById('hist-total').textContent = `L.${op.total}`;
+  document.getElementById('hist-abono').textContent = `L.${op.abono}`;
+  document.getElementById('hist-saldo').textContent = `L.${op.total - op.abono}`;
+
+  document.getElementById('hist-pagos-body').innerHTML = op.pagos.map(p => `
+    <tr><td>${p.date}</td><td class="fw700 text-success">L.${p.monto}</td></tr>
+  `).join('') || '<tr><td colspan="2" class="text-muted">Sin pagos registrados</td></tr>';
+
+  // Gantt Timeline
+  let ganttHtml = '';
+  WORKFLOW.forEach(stage => {
+    if(op.times[stage]){
+       ganttHtml += `
+         <div class="gantt-step">
+           <div class="gantt-area">${stage}</div>
+           <div class="gantt-times">Iniciado: ${op.times[stage].inicio || '--'} | Finalizado: ${op.times[stage].fin || '--'}</div>
+         </div>`;
+    }
+  });
+  document.getElementById('hist-gantt').innerHTML = ganttHtml || '<div class="text-muted">La producción no ha iniciado aún.</div>';
+
+  document.getElementById('hist-errores-body').innerHTML = op.errors.map(e => `
+    <tr><td>${e.date}</td><td>${e.area}</td><td class="fw700">${e.part}</td><td>${e.desc}</td></tr>
+  `).join('') || '<tr><td colspan="4" class="text-muted text-center">Sin errores reportados</td></tr>';
+
+  document.getElementById('hist-chat-body').innerHTML = op.messages.map(m => `
+    <div style="margin-bottom:8px; padding-bottom:8px; border-bottom:1px solid #e2e8f0;">
+      <span style="font-weight:700; color:var(--navy);">${m.sender}</span> <span style="font-size:0.7rem; color:gray;">(${m.date})</span><br>
+      <span style="color:${m.type==='error'?'red':m.type==='success'?'green':'#1e293b'}">${m.text}</span>
+    </div>
+  `).join('') || '<div class="text-muted">Sin mensajes</div>';
+
+  document.getElementById('modal-historial').classList.add('open');
+}
+
+function descargarPDF(){
+  const element = document.getElementById('pdf-content');
+  const opt = {
+    margin:       0.5,
+    filename:     `Reporte_${document.getElementById('hist-op-id').textContent}.pdf`,
+    image:        { type: 'jpeg', quality: 0.98 },
+    html2canvas:  { scale: 2 },
+    jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+  };
+  html2pdf().set(opt).from(element).save();
+}
+
+// =========================================================
+// FLUJO DISEÑADOR
+// =========================================================
+function renderDisenador(){
+  const artes = DB.mockups.filter(m=>m.estado==='En Diseño');
+  document.getElementById('tbody-dis-artes').innerHTML = artes.map(m=>`
+    <tr>
+      <td>${m.id}</td><td>${m.cliente} (${m.tienda})</td>
+      <td>${m.imgRef ? `<a href="${m.imgRef}" target="_blank">Ver</a>` : 'N/A'}</td>
+      <td><input type="file" accept="image/*" onchange="subirArteFinal(this, '${m.id}')"></td>
+      <td><span class="text-muted">Esperando...</span></td>
+    </tr>`).join('') || '<tr><td colspan="5" class="empty-state">Sin tareas asignadas</td></tr>';
+}
+
+function subirArteFinal(input, mockupId){
+  const file = input.files[0];
+  if(file){
+    const reader = new FileReader();
+    reader.onload = e => {
+      const m = DB.mockups.find(x=>x.id===mockupId);
+      m.imgFinal = e.target.result;
+      m.estado = 'Revisión Tienda'; 
+      alert('Arte subido. Notificando a la Tienda para su revisión.');
+      renderDisenador();
+    };
+    reader.readAsDataURL(file);
+  }
+}
+
+// =========================================================
+// FLUJO DE PRODUCCIÓN GRANULAR (TABLETS)
+// =========================================================
+function renderProduccion(){
+  document.getElementById('prod-area-title').textContent = activeArea;
+  document.getElementById('kanban-toggle-container').style.display = activeArea==='Calandrado' ? 'block' : 'none';
+  
+  const opsInArea = DB.orders.filter(op => {
+    if(op.statusGlobal === 'Entregado') return false;
+    return op.items.some(item => {
+      if(activeArea==='Empaque' && item.stage==='Empaque') return true;
+      if(activeArea==='Planchado' && item.stage==='Planchado') return true;
+      return Object.values(item.parts).some(p => p.stage === activeArea);
+    });
+  });
+
+  document.getElementById('view-normal').innerHTML = opsInArea.map(op => `
+    <div class="prod-card" onclick="abrirChecklist('${op.id}')">
+      <div class="fw700 text-navy" style="font-size:1.2rem">${op.id}</div>
+      <div class="text-muted fs12">${op.cliente}</div>
+      <div class="mt8"><span class="badge bg-gold">${op.items.length} Kits/Items</span></div>
+      ${op.errors?.length ? `<div class="mt8"><span class="badge bg-red"><i class="fas fa-exclamation"></i> Con Correcciones o Reportes</span></div>`:''}
+    </div>
+  `).join('') || '<div class="empty-state" style="grid-column:1/-1">No hay tareas en esta área</div>';
+}
+
+function abrirChecklist(opId){
+  activeOP = DB.orders.find(o=>o.id===opId);
+  document.getElementById('chk-title').textContent = `${activeArea} - ${activeOP.id}`;
+  
+  const cont = document.getElementById('chk-container');
+  let html = '';
+
+  activeOP.items.forEach((item, iIdx) => {
+    let hasWork = false;
+    
+    if(['Impresion','Calandrado','Corte'].includes(activeArea)){
+      hasWork = Object.values(item.parts).some(p=>p.stage===activeArea);
+    } else if (activeArea === 'Confeccion') {
+      hasWork = Object.values(item.parts).some(p=>p.stage==='Confeccion') || item.stage === 'Confeccion_Ensamble';
+    } else if (['Planchado', 'Empaque'].includes(activeArea)) {
+      hasWork = item.stage === activeArea;
+    }
+
+    if(hasWork){
+      const isOpen = iIdx === 0 ? 'open' : '';
+      html += `<details class="part-box" ${isOpen}>
+                 <summary class="part-header">
+                    <div class="flex-between" style="width:100%">
+                      <span>Item ${iIdx+1}: ${item.name} (${item.gender} - ${item.size})</span>
+                      <span class="badge bg-blue">${item.fabric} <i class="fas fa-chevron-down" style="margin-left:6px"></i></span>
+                    </div>
+                 </summary>
+                 <div class="part-grid">`;
+      
+      if(['Impresion','Calandrado','Corte','Confeccion'].includes(activeArea)){
+        Object.entries(item.parts).forEach(([pName, pState]) => {
+          if(pState.stage === activeArea){
+             const btnClass = pState.error ? 'error' : pState.checked ? 'active' : '';
+             html += `<div class="part-btn ${btnClass}" onclick="togglePart('${iIdx}', '${pName}')" id="btn-${iIdx}-${pName.replace(/\s/g,'')}"><i class="fas ${pState.error ? 'fa-times-circle' : 'fa-check-circle'}"></i><span>${pName}</span></div>`;
+          }
+        });
+      }
+
+      if(activeArea === 'Confeccion'){
+         const allPartsDone = Object.values(item.parts).every(p => p.stage !== 'Confeccion' || p.checked);
+         if(allPartsDone && !item.stage?.includes('Planchado')){
+            html += `<div class="part-btn" style="border-color:var(--success)" onclick="checkItemComplete('${iIdx}', 'Planchado')"><i class="fas fa-tshirt"></i><span>Ensamble Final Listo</span></div>`;
+         }
+      }
+      else if(activeArea === 'Planchado'){
+         html += `<div class="part-btn" style="border-color:var(--success)" onclick="checkItemComplete('${iIdx}', 'Empaque')"><i class="fas fa-fire-alt"></i><span>Planchado Listo</span></div>`;
+      }
+      else if(activeArea === 'Empaque'){
+         const labels = DB.config.inventory.filter(i=>i.type==='Etiqueta');
+         html += `<select class="form-ctrl mb8" id="lbl-${iIdx}"><option value="">Seleccionar Etiqueta (Desc. Inventario)...</option>${labels.map(l=>`<option value="${l.id}">${l.name}</option>`).join('')}</select>`;
+         html += `<div class="part-btn" style="border-color:var(--success)" onclick="checkItemEmpaque('${iIdx}')"><i class="fas fa-box"></i><span>Empacado</span></div>`;
+      }
+
+      html += `</div></details>`;
+    }
+  });
+
+  cont.innerHTML = html || '<div class="text-muted">No hay piezas pendientes para esta área en esta orden.</div>';
+  renderChat();
+  document.getElementById('modal-checklist').classList.add('open');
+}
+
+function togglePart(itemIdx, partName){
+  const part = activeOP.items[itemIdx].parts[partName];
+  
+  if(part.error) {
+     if(activeArea === 'Impresion') {
+         if(confirm(`¿Confirmar que la pieza ${partName} del Jugador ${activeOP.items[itemIdx].name} ha sido CORREGIDA / REIMPRESA exitosamente?`)) {
+             part.error = false;
+             part.checked = true;
+             const btn = document.getElementById(`btn-${itemIdx}-${partName.replace(/\s/g,'')}`);
+             btn.classList.remove('error');
+             btn.classList.add('active');
+             btn.innerHTML = `<i class="fas fa-check-circle"></i><span>${partName}</span>`;
+             activeOP.messages.push({sender: 'Impresion', text: `ERROR SOLUCIONADO Y REIMPRESO: ${partName} (Item ${parseInt(itemIdx)+1})`, type: 'success'});
+             renderChat();
+         }
+     } else alert('Esta pieza fue reportada con error. Solo el área de IMPRESIÓN puede marcarla como corregida.');
+     return;
+  }
+  
+  part.checked = !part.checked;
+  const btn = document.getElementById(`btn-${itemIdx}-${partName.replace(/\s/g,'')}`);
+  if(part.checked) btn.classList.add('active'); else btn.classList.remove('active');
+  
+  if(activeArea==='Confeccion') abrirChecklist(activeOP.id);
+}
+
+function checkItemComplete(itemIdx, nextStage){
+  activeOP.items[itemIdx].stage = nextStage;
+  abrirChecklist(activeOP.id);
+}
+
+function checkItemEmpaque(itemIdx){
+  const sel = document.getElementById(`lbl-${itemIdx}`).value;
+  if(!sel) return alert('Seleccione una etiqueta utilizada para descontar inventario.');
+  
+  const invItem = DB.config.inventory.find(i=>i.id===sel);
+  if(invItem && invItem.stock > 0) invItem.stock--;
+  
+  activeOP.items[itemIdx].stage = 'Tienda';
+  activeOP.items[itemIdx].completed = true;
+  abrirChecklist(activeOP.id);
+}
+
+function guardarChecklist(){
+  const nextAreaIdx = WORKFLOW.indexOf(activeArea) + 1;
+  const nextArea = WORKFLOW[nextAreaIdx];
+
+  if(['Impresion','Calandrado','Corte','Confeccion'].includes(activeArea)){
+    activeOP.items.forEach(item => {
+      Object.values(item.parts).forEach(p => {
+        if(p.stage === activeArea && p.checked){
+          p.stage = nextArea;
+          p.checked = false;
+        }
+      });
+    });
+  }
+
+  let lowestIdx = 99;
+  activeOP.items.forEach(item => {
+    if(!item.completed){
+      if(item.stage && WORKFLOW.indexOf(item.stage) < lowestIdx) lowestIdx = WORKFLOW.indexOf(item.stage);
+      Object.values(item.parts).forEach(p => {
+        const idx = WORKFLOW.indexOf(p.stage);
+        if(idx < lowestIdx) lowestIdx = idx;
+      });
+    }
+  });
+  
+  if(lowestIdx < 99) activeOP.statusGlobal = WORKFLOW[lowestIdx];
+  else activeOP.statusGlobal = 'Tienda';
+
+  registrarTiempo('fin');
+  closeModal('modal-checklist');
+  renderProduccion();
+}
+
+function abrirReporteError(){
+  const select = document.getElementById('err-pieza');
+  select.innerHTML = '';
+  activeOP.items.forEach((item, i) => {
+    Object.entries(item.parts).forEach(([pName, pState]) => {
+      if(pState.stage === activeArea){
+        select.innerHTML += `<option value="${i}|${pName}">Item ${i+1}: ${pName}</option>`;
+      }
+    });
+  });
+  if(!select.innerHTML) return alert('No hay piezas disponibles para reportar en este estado.');
+  document.getElementById('modal-error').classList.add('open');
+}
+
+function procesarError(){
+  const val = document.getElementById('err-pieza').value.split('|');
+  const desc = document.getElementById('err-desc').value;
+  if(!desc) return alert('Ingrese descripción del daño');
+  
+  const iIdx = val[0];
+  const pName = val[1];
+  const part = activeOP.items[iIdx].parts[pName];
+  
+  part.stage = 'Impresion';
+  part.checked = false;
+  part.error = true; 
+  
+  activeOP.errors.push({ area: activeArea, part: pName, desc, date: new Date().toLocaleTimeString() });
+  activeOP.messages.push({ sender: activeArea, text: `ERROR REPORTADO (Devuelto a Impresión): ${pName} - ${desc}`, type: 'error' });
+
+  closeModal('modal-error');
+  abrirChecklist(activeOP.id); 
+}
+
+function renderChat(){
+  const box = document.getElementById('chk-chat');
+  box.innerHTML = activeOP.messages.map(m => `
+    <div class="msg ${m.type==='error'?'error-log':m.type==='success'?'success-log':''}">
+      <div class="msg-meta">${m.sender} - ${m.date}</div>
+      <div>${m.text}</div>
+    </div>
+  `).join('') || '<div class="text-muted fs12">Sin mensajes...</div>';
+  box.scrollTop = box.scrollHeight;
+}
+function enviarMensaje(){
+  const text = document.getElementById('chk-msg').value;
+  if(!text) return;
+  activeOP.messages.push({sender: activeArea, text, date: new Date().toLocaleTimeString()});
+  document.getElementById('chk-msg').value = '';
+  renderChat();
+}
+
+function registrarTiempo(tipo){
+  if(!activeOP.times[activeArea]) activeOP.times[activeArea] = {};
+  activeOP.times[activeArea][tipo] = new Date().toLocaleTimeString();
+  document.getElementById('chk-timer').textContent = `Iniciado: ${activeOP.times[activeArea].inicio}`;
+}
+
+function toggleKanban(){
+  const vn = document.getElementById('view-normal');
+  const vk = document.getElementById('view-kanban');
+  if(vn.style.display==='none'){ vn.style.display='grid'; vk.style.display='none'; }
+  else { 
+    vn.style.display='none'; vk.style.display='flex'; 
+    renderKanbanCalandrado();
+  }
+}
+
+function renderKanbanCalandrado(){
+  const board = document.getElementById('view-kanban');
+  const partsByFabric = {};
+  
+  DB.orders.forEach(op => {
+    if(op.statusGlobal==='Entregado') return;
+    op.items.forEach((item, iIdx) => {
+      Object.entries(item.parts).forEach(([pName, pState]) => {
+        if(pState.stage === 'Calandrado'){
+          if(!partsByFabric[item.fabric]) partsByFabric[item.fabric] =[];
+          partsByFabric[item.fabric].push({opId: op.id, pName, iIdx});
+        }
+      });
+    });
+  });
+
+  board.innerHTML = Object.entries(partsByFabric).map(([fabric, parts]) => `
+    <div class="kanban-col">
+      <div class="kanban-head">${fabric} <span class="badge bg-navy" style="float:right">${parts.length}</span></div>
+      ${parts.map(p => `
+        <div class="part-box" style="padding:8px" onclick="abrirChecklist('${p.opId}')">
+          <div style="font-size:.75rem;color:var(--muted)">${p.opId} (Item ${p.iIdx+1})</div>
+          <div class="fw700">${p.pName}</div>
+        </div>
+      `).join('')}
+    </div>
+  `).join('') || '<div class="empty-state">No hay piezas en calandrado</div>';
+}
+
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+
+// Init
+document.addEventListener('DOMContentLoaded', () => {
+  switchRole('admin');
+});
+</script>
+</body>
+</html>
